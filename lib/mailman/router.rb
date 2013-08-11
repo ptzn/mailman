@@ -62,8 +62,9 @@ module Mailman
         else
           instance_exec(&result[:block])
         end
-      elsif @default_block
-        instance_exec(&@default_block)
+      else
+        instance_exec(&@default_block) if @default_block
+        :message_not_match
       end
     end
 

@@ -21,6 +21,7 @@ module Mailman
       #   have been processed
       # @option options [String] :filter the search filter to use to select
       #   messages to process
+      # @option options [Boolean] :keep_not_matched_unread whether or not keep messages not matched with any blocks (except default) unread
       def initialize(options)
         @processor  = options[:processor]
         @server     = options[:server]
@@ -31,6 +32,7 @@ module Mailman
         @port       = options[:port] || 143
         @ssl        = options[:ssl] || false
         @folder     = options[:folder] || "INBOX"
+        @keep_not_matched_unread = options[:keep_not_matched_unread] || false
       end
 
       # Connects to the IMAP server.
@@ -53,8 +55,11 @@ module Mailman
       def get_messages
         @connection.search(@filter).each do |message|
           body = @connection.fetch(message, "RFC822")[0].attr["RFC822"]
-          @processor.process(body)
+
+          result = @processor.process(body)
+
           @connection.store(message, "+FLAGS", @done_flags)
+          @connection.store(message, "-FLAGS", [Net::IMAP::SEEN]) if result == :message_not_match && @keep_not_matched_unread
         end
         # Clears messages that have the Deleted flag set
         @connection.expunge
